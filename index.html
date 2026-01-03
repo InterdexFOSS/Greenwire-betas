@@ -215,6 +215,13 @@
       const nameInput = document.getElementById('nameInput');
       const roomInput = document.getElementById('roomInput');
       const msgInput = document.getElementById('msgInput');
+      msgInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMsg();
+  }
+});
+
       const messagesEl = document.getElementById('messages');
       const userTag = document.getElementById('userTag');
       const roomTag = document.getElementById('roomTag');
