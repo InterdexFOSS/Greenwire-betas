@@ -95,6 +95,7 @@
       flex: 1;
       overflow-y: auto;
       padding-right: 6px;
+      scroll-behavior: smooth;
     }
 
     .msg {
@@ -277,10 +278,10 @@
           console.error('Error loading messages:', error);
           addMsg('SYSTEM', 'Error loading previous messages.', null, true);
         } else if (Array.isArray(data)) {
-          data.forEach(m => addMsg(m.username, m.content, m.inserted_at, false));
+          data.forEach(m => addMsg(m.username, m.content, m.inserted_at, false, false));
         }
 
-        addMsg('SYSTEM', `Joined room: ${room}`, null, true);
+        addMsg('SYSTEM', `Joined room: ${room}`, null, true, false);
 
         // Unsubscribe previous channel if any
         if (supabaseChannel) {
@@ -295,7 +296,7 @@
             { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${room}` },
             payload => {
               const m = payload.new;
-             addMsg(m.username, m.content, m.inserted_at, false, false);
+              addMsg(m.username, m.content, m.inserted_at, false, false);
             }
           )
           .subscribe((status) => {
@@ -323,53 +324,54 @@
 
         if (error) {
           console.error('Error sending message:', error);
-          addMsg('SYSTEM', 'Error sending message.', null, true);
+          addMsg('SYSTEM', 'Error sending message.', null, true, false);
           return;
         }
 
-        // We rely on realtime to deliver the message to all clients, including us.
-       msgInput.value = '';
-       addMsg(username, text, null, false, true);
+        // Clear input and show our own message, auto-scrolling to it
+        msgInput.value = '';
+        addMsg(username, text, null, false, true);
+      }
+
+      function addMsg(name, text, timestamp = null, isSystem = false, fromSelf = false) {
+        if (!messagesEl) return;
+
+        const div = document.createElement('div');
+        div.className = 'msg';
+        if (isSystem || name === 'SYSTEM') {
+          div.classList.add('system');
         }
 
-function addMsg(name, text, timestamp = null, isSystem = false, fromSelf = false) {
-  if (!messagesEl) return;
+        const headerLine = document.createElement('div');
+        headerLine.className = 'header-line';
 
-  const div = document.createElement('div');
-  div.className = 'msg';
-  if (isSystem || name === 'SYSTEM') {
-    div.classList.add('system');
-  }
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name';
+        nameSpan.textContent = name;
 
-  const headerLine = document.createElement('div');
-  headerLine.className = 'header-line';
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'time';
+        timeSpan.textContent = formatTime(timestamp);
 
-  const nameSpan = document.createElement('span');
-  nameSpan.className = 'name';
-  nameSpan.textContent = name;
+        headerLine.appendChild(nameSpan);
+        if (timeSpan.textContent) {
+          headerLine.appendChild(timeSpan);
+        }
 
-  const timeSpan = document.createElement('span');
-  timeSpan.className = 'time';
-  timeSpan.textContent = formatTime(timestamp);
+        const textDiv = document.createElement('div');
+        textDiv.className = 'text';
+        textDiv.textContent = text;
 
-  headerLine.appendChild(nameSpan);
-  if (timeSpan.textContent) {
-    headerLine.appendChild(timeSpan);
-  }
+        div.appendChild(headerLine);
+        div.appendChild(textDiv);
 
-  const textDiv = document.createElement('div');
-  textDiv.className = 'text';
-  textDiv.textContent = text;
+        messagesEl.appendChild(div);
 
-  div.appendChild(headerLine);
-  div.appendChild(textDiv);
-
-  messagesEl.appendChild(div);
-
-  // Only auto-scroll if it's your own message
-  if (fromSelf) {
-    div.scrollIntoView({ behavior: 'smooth' });
-  }
+        // Only auto-scroll if it's your own message
+        if (fromSelf) {
+          div.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
     });
   </script>
 </body>
