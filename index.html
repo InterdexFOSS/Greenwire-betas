@@ -295,7 +295,7 @@
             { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${room}` },
             payload => {
               const m = payload.new;
-              addMsg(m.username, m.content, m.inserted_at, false);
+             addMsg(m.username, m.content, m.inserted_at, false, false);
             }
           )
           .subscribe((status) => {
@@ -328,44 +328,48 @@
         }
 
         // We rely on realtime to deliver the message to all clients, including us.
-        msgInput.value = '';
-      }
-
-      function addMsg(name, text, timestamp = null, isSystem = false) {
-        if (!messagesEl) return;
-
-        const div = document.createElement('div');
-        div.className = 'msg';
-        if (isSystem || name === 'SYSTEM') {
-          div.classList.add('system');
+       msgInput.value = '';
+       addMsg(username, text, null, false, true);
         }
 
-        const headerLine = document.createElement('div');
-        headerLine.className = 'header-line';
+function addMsg(name, text, timestamp = null, isSystem = false, fromSelf = false) {
+  if (!messagesEl) return;
 
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'name';
-        nameSpan.textContent = name;
+  const div = document.createElement('div');
+  div.className = 'msg';
+  if (isSystem || name === 'SYSTEM') {
+    div.classList.add('system');
+  }
 
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'time';
-        timeSpan.textContent = formatTime(timestamp);
+  const headerLine = document.createElement('div');
+  headerLine.className = 'header-line';
 
-        headerLine.appendChild(nameSpan);
-        if (timeSpan.textContent) {
-          headerLine.appendChild(timeSpan);
-        }
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'name';
+  nameSpan.textContent = name;
 
-        const textDiv = document.createElement('div');
-        textDiv.className = 'text';
-        textDiv.textContent = text;
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'time';
+  timeSpan.textContent = formatTime(timestamp);
 
-        div.appendChild(headerLine);
-        div.appendChild(textDiv);
+  headerLine.appendChild(nameSpan);
+  if (timeSpan.textContent) {
+    headerLine.appendChild(timeSpan);
+  }
 
-        messagesEl.appendChild(div);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
+  const textDiv = document.createElement('div');
+  textDiv.className = 'text';
+  textDiv.textContent = text;
+
+  div.appendChild(headerLine);
+  div.appendChild(textDiv);
+
+  messagesEl.appendChild(div);
+
+  // Only auto-scroll if it's your own message
+  if (fromSelf) {
+    div.scrollIntoView({ behavior: 'smooth' });
+  }
     });
   </script>
 </body>
