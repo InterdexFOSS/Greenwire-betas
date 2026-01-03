@@ -12,6 +12,7 @@
       --green-dim: #00aa66;
       --text: #d7ffe9;
       --border: #123d2a;
+      --system: #7fe3b4;
     }
 
     * { box-sizing: border-box; font-family: system-ui, monospace; }
@@ -98,11 +99,21 @@
 
     .msg {
       margin-bottom: 10px;
-      padding: 8px 10px;
-      border-left: 3px solid var(--green-dim);
+      padding: 6px 10px;
       background: #060e09;
       border-radius: 4px;
-      opacity: 1;
+    }
+
+    .msg.system {
+      color: var(--system);
+      border-left: 3px solid var(--system);
+    }
+
+    .msg .header-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 2px;
     }
 
     .msg .name {
@@ -111,15 +122,20 @@
       font-size: 13px;
     }
 
+    .msg.system .name {
+      color: var(--system);
+    }
+
+    .msg .time {
+      font-size: 11px;
+      opacity: 0.7;
+      font-family: monospace;
+    }
+
     .msg .text {
       font-size: 14px;
       white-space: pre-wrap;
-    }
-
-    /* fade-out effect after 1 minute */
-    .msg.fade {
-      opacity: 0;
-      transition: opacity 0.6s ease;
+      word-wrap: break-word;
     }
 
     .inputbar {
@@ -173,13 +189,12 @@
         <div class="messages" id="messages"></div>
         <div class="inputbar">
           <input id="msgInput" type="text" placeholder="Type a message..." />
-          <input id="fileInput" type="file" />
           <button onclick="sendMsg()">Send</button>
         </div>
       </div>
     </div>
 
-    <footer>Session-only profile · No accounts · Dark Green Network</footer>
+    <footer>Session-only profile · No accounts · Made by Meau · Powered by Github and SupaBase </footer>
   </div>
 
   <!-- Supabase client -->
@@ -231,6 +246,17 @@
         show('screen-room');
       }
 
+      function formatTime(ts) {
+        try {
+          const d = ts ? new Date(ts) : new Date();
+          const hh = d.getHours().toString().padStart(2, '0');
+          const mm = d.getMinutes().toString().padStart(2, '0');
+          return `${hh}:${mm}`;
+        } catch {
+          return '';
+        }
+      }
+
       async function joinRoom() {
         const val = (roomInput.value.trim() || generateRoom()).toUpperCase();
         room = val;
@@ -249,12 +275,12 @@
 
         if (error) {
           console.error('Error loading messages:', error);
-          addMsg('SYSTEM', 'Error loading previous messages.');
-        } else {
-          data.forEach(m => addMsg(m.username, m.content));
+          addMsg('SYSTEM', 'Error loading previous messages.', null, true);
+        } else if (Array.isArray(data)) {
+          data.forEach(m => addMsg(m.username, m.content, m.inserted_at, false));
         }
 
-        addMsg('SYSTEM', `Joined room: ${room}`);
+        addMsg('SYSTEM', `Joined room: ${room}`, null, true);
 
         // Unsubscribe previous channel if any
         if (supabaseChannel) {
@@ -269,11 +295,10 @@
             { event: 'INSERT', schema: 'public', table: 'messages', filter: `room=eq.${room}` },
             payload => {
               const m = payload.new;
-              // Avoid duplicating our own message if it’s already visible
-              addMsg(m.username, m.content);
+              addMsg(m.username, m.content, m.inserted_at, false);
             }
           )
-          .subscribe(async (status) => {
+          .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
               console.log('Realtime subscribed to room', room);
             }
@@ -298,7 +323,7 @@
 
         if (error) {
           console.error('Error sending message:', error);
-          addMsg('SYSTEM', 'Error sending message.');
+          addMsg('SYSTEM', 'Error sending message.', null, true);
           return;
         }
 
@@ -306,28 +331,40 @@
         msgInput.value = '';
       }
 
-      function addMsg(name, text) {
+      function addMsg(name, text, timestamp = null, isSystem = false) {
         if (!messagesEl) return;
 
         const div = document.createElement('div');
         div.className = 'msg';
-        div.innerHTML = `<div class="name">${name}</div><div class="text">${text}</div>`;
+        if (isSystem || name === 'SYSTEM') {
+          div.classList.add('system');
+        }
+
+        const headerLine = document.createElement('div');
+        headerLine.className = 'header-line';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name';
+        nameSpan.textContent = name;
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'time';
+        timeSpan.textContent = formatTime(timestamp);
+
+        headerLine.appendChild(nameSpan);
+        if (timeSpan.textContent) {
+          headerLine.appendChild(timeSpan);
+        }
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'text';
+        textDiv.textContent = text;
+
+        div.appendChild(headerLine);
+        div.appendChild(textDiv);
+
         messagesEl.appendChild(div);
         messagesEl.scrollTop = messagesEl.scrollHeight;
-
-        // fade out after 60 seconds and remove
-        const fadeMs = 60000;
-        const removeDelayMs = 800;
-
-        setTimeout(() => {
-          div.classList.add('fade');
-        }, fadeMs);
-
-        setTimeout(() => {
-          if (div.parentNode) {
-            div.parentNode.removeChild(div);
-          }
-        }, fadeMs + removeDelayMs);
       }
     });
   </script>
